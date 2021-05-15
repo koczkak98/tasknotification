@@ -1,23 +1,10 @@
 package com.tasknotification.tasknotification.model.login;
 
-public class LogInRequest {
-    public String getId           () { return id           ;}
-    public String getDateTime     () { return dateTime     ;}
-    public String getEmailAddress () { return emailAddress ;}
-    public String getPassword     () { return password     ;}
-    public String getName         () { return name         ;}
+import com.tasknotification.tasknotification.model.*;
 
-    protected String id           ;
-    protected String dateTime     ;
-    protected String emailAddress ;
-    protected String password     ;
-    protected String name         ;
+public class LogInRequest extends Request {
 
-    public LogInRequest(String dateTime, String userAccountId, String emailAddress, String password, String name) {
-        this.id            = String.valueOf(System.currentTimeMillis());
-        this.dateTime      = dateTime                                  ;
-        this.emailAddress  = emailAddress                              ;
-        this.password      = password                                  ;
-        this.name          = name                                      ;
+    public LogInRequest() {
+        id                 = String.valueOf(System.currentTimeMillis());
     }
 }

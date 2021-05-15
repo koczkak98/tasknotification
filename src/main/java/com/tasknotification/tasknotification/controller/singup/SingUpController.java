@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class SingUpController {
     @Autowired
-    protected UserAccountsRepository userAccountsRepo        ;
+    protected UserAccountsRepository userAccountsRepo;
     @Autowired
-    protected SingUpRepository singUpRepo              ;
+    protected SingUpRepository       singUpRepo      ;
 
     protected static final int       VALIDATION_ERR       = 1;
     protected static final int       EXISTING_EMAIL       = 2;
@@ -30,7 +30,7 @@ public class SingUpController {
         SingUpBase       i;
         UserAccountsBase a;
 
-        r      = new SingUpRequest(emailAddress, password, name);
+        r      = getSingUpRequest(emailAddress, password, name);
         s      = getSingUpResponse(r);
         i      = new SingUpBase();
 
@@ -59,8 +59,22 @@ public class SingUpController {
         a.setPassWord(Security.encrypt(r.getPassword()));
         a.setName(r.getName());
         a.setSingUpId(s);
+        a.addLoginId(null);
 
         return a;
+    }
+
+    public SingUpRequest getSingUpRequest(String e, String pwd, String n) { return createSingUpRequest(e, pwd, n);}
+
+    protected SingUpRequest createSingUpRequest(String e, String pwd, String n)
+    {
+        SingUpRequest r;
+        r = new SingUpRequest();
+        r.setEmailAddress(e);
+        r.setPassword(pwd);
+        r.setName(n);
+
+        return  r;
     }
 
     public SingUpResponse getSingUpResponse(SingUpRequest r) { return createSingUpResponse(r);}
@@ -70,17 +84,11 @@ public class SingUpController {
         SingUpResponse s;
 
         s = new SingUpResponse();
-        s.setId(generateAndGetId());
         s.setReqId(r.getId());
         s.setResult(generateAndGetResult(r));
         s.setCode(generateAndGetCode(r));
 
         return s;
-    }
-
-    protected synchronized String generateAndGetId()
-    {
-        return String.valueOf(System.currentTimeMillis());
     }
 
     protected synchronized String generateAndGetResult (SingUpRequest r)
@@ -127,7 +135,7 @@ public class SingUpController {
     protected boolean isSingUpSuccess       (int           c) {return c==0;}
     protected boolean isRequestValid        (SingUpRequest r) { return r.getEmailAddress() != null && r.getPassword() != null && r.getName() != null;}
     protected boolean isResultOk            (String result  ) { return result.equals("OK")                           ;}
-    protected boolean existsEmailAddress    (String s       ) { return userAccountsRepo.findByEMailAddress(s) != null;}
+    protected boolean existsEmailAddress    (String s       ) { return userAccountsRepo.findByEmailAddress(Security.encrypt(s)).size() > 0;}
     protected boolean emailAddressIsNotValid(String s       ) { return s.equals("validationErr")                     ;}
     protected boolean isPasswordCharsEnough (String s       ) { return s.length()>=8                                 ;}
 }

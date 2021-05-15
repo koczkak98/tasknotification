@@ -1,20 +1,16 @@
 package com.tasknotification.tasknotification.model.singup;
 
-public class SingUpRequest {
-    public String getId          () { return id          ;}
-    public String getEmailAddress() { return emailAddress;}
-    public String getPassword    () { return password    ;}
-    public String getName        () { return name        ;}
+import com.tasknotification.tasknotification.model.*;
 
-    protected String id          ;
-    protected String emailAddress;
-    protected String password    ;
-    protected String name        ;
+public class SingUpRequest extends Request {
 
-    public SingUpRequest(String eMailAddress, String password, String name) {
-        this.id           = String.valueOf(System.currentTimeMillis());
-        this.emailAddress = eMailAddress                              ;
-        this.password     = password                                  ;
-        this.name         = name                                      ;
+    public String getName() { return name;}
+
+    public void setName(String name) { this.name = name; }
+
+    protected String name;
+
+    public SingUpRequest() {
+        id = String.valueOf(System.currentTimeMillis());
     }
 }
