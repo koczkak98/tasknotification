@@ -1,8 +1,10 @@
 package com.tasknotification.tasknotification.controller.singup;
 
+import com.tasknotification.tasknotification.controller.Codes;
+import com.tasknotification.tasknotification.controller.CodesSet;
 import com.tasknotification.tasknotification.controller.Security;
-import com.tasknotification.tasknotification.db.SingUpRepository;
-import com.tasknotification.tasknotification.db.UserAccountsRepository;
+import com.tasknotification.tasknotification.db.SingUpDao;
+import com.tasknotification.tasknotification.db.UserAccountsDao;
 import com.tasknotification.tasknotification.model.base.*;
 import com.tasknotification.tasknotification.model.singup.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,14 +13,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class SingUpController {
     @Autowired
-    protected UserAccountsRepository userAccountsRepo;
+    protected UserAccountsDao userAccountsRepo;
     @Autowired
-    protected SingUpRepository       singUpRepo      ;
-
-    protected static final int       VALIDATION_ERR       = 1;
-    protected static final int       EXISTING_EMAIL       = 2;
-    protected static final int       PASSWORD_INAPT       = 3;
-    protected static final int       REQUEST_PARAMS_EMPTY = 4;
+    protected SingUpDao singUpRepo      ;
 
     @GetMapping("/sendsingup")
     public SingUpResponse getSingUp(@RequestParam("emailaddress") String emailAddress,
@@ -54,7 +51,6 @@ public class SingUpController {
 
         a = new UserAccountsBase();
 
-        a.setId(String.valueOf(System.currentTimeMillis()));
         a.setEmailAddress(Security.encrypt(r.getEmailAddress()));
         a.setPassWord(Security.encrypt(r.getPassword()));
         a.setName(r.getName());
@@ -82,59 +78,44 @@ public class SingUpController {
     protected SingUpResponse createSingUpResponse(SingUpRequest r)
     {
         SingUpResponse s;
+        String e;
+        String p;
 
         s = new SingUpResponse();
+        e = r.getEmailAddress();
+        p = r.getPassword();
+
         s.setReqId(r.getId());
-        s.setResult(generateAndGetResult(r));
-        s.setCode(generateAndGetCode(r));
+
+        if (isRequestValid(r)) {
+            if (existsEmailAddress(e)) {
+                s.setResult("ERR");
+                s.setCode(CodesSet.getCode(Codes.EXISTING_EMAIL));
+                s.setMessage(Codes.EXISTING_EMAIL.toString());
+            } else if (emailAddressIsNotValid(e)) {
+                s.setResult("ERR");
+                s.setCode(CodesSet.getCode(Codes.VALIDATION_ERR));
+                s.setMessage(Codes.VALIDATION_ERR.toString());
+            } else if (!isPasswordCharsEnough(p)) {
+                s.setResult("ERR");
+                s.setCode(CodesSet.getCode(Codes.PASSWORD_INAPT));
+                s.setMessage(Codes.PASSWORD_INAPT.toString());
+            } else {
+                s.setResult("OK");
+                s.setCode(CodesSet.getCode(Codes.SUCCESS));
+                s.setMessage(Codes.SUCCESS.toString());
+            }
+        } else {
+            s.setResult("ERR");
+            s.setCode(CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY));
+            s.setMessage(Codes.REQUEST_PARAMS_EMPTY.toString());
+        }
 
         return s;
     }
 
-    protected synchronized String generateAndGetResult (SingUpRequest r)
-    {
-        String e;
-        String p;
-
-        e = r.getEmailAddress();
-        p = r.getPassword();
-
-        if (isRequestValid(r)) {
-            if (existsEmailAddress(e) || emailAddressIsNotValid(e) || !isPasswordCharsEnough(p)) {
-                return "ERR";
-            }
-        } else {
-            return "ERR";
-        }
-        return "OK";
-    }
-
-    protected synchronized int generateAndGetCode(SingUpRequest r)
-    {
-        String e;
-        String p;
-
-        e = r.getEmailAddress();
-        p = r.getPassword();
-        if(isRequestValid(r)) {
-            if (!isResultOk(e)) {
-                if (existsEmailAddress(e)) {
-                    return EXISTING_EMAIL;
-                } else if (emailAddressIsNotValid(e)) {
-                    return VALIDATION_ERR;
-                } else if (!isPasswordCharsEnough(p)) {
-                    return PASSWORD_INAPT;
-                }
-            }
-        } else {
-            return REQUEST_PARAMS_EMPTY;
-        }
-        return 0;
-    }
-
     protected boolean isSingUpSuccess       (int           c) {return c==0;}
     protected boolean isRequestValid        (SingUpRequest r) { return r.getEmailAddress() != null && r.getPassword() != null && r.getName() != null;}
-    protected boolean isResultOk            (String result  ) { return result.equals("OK")                           ;}
     protected boolean existsEmailAddress    (String s       ) { return userAccountsRepo.findByEmailAddress(Security.encrypt(s)).size() > 0;}
     protected boolean emailAddressIsNotValid(String s       ) { return s.equals("validationErr")                     ;}
     protected boolean isPasswordCharsEnough (String s       ) { return s.length()>=8                                 ;}

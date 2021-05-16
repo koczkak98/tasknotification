@@ -9,6 +9,8 @@ public abstract class CodesSet {
     protected static final int       PASSWORD_INAPT       = 3;
     protected static final int       REQUEST_PARAMS_EMPTY = 4;
     protected static final int       LOGIN_FAILED         = 5;
+    protected static final int       TERM_IS_NOT_VALID    = 6;
+    protected static final int       INACTIVE_SESSION_ID  = 7;
 
     public static Integer getCode(Codes c)
     {
@@ -29,6 +31,8 @@ public abstract class CodesSet {
         e.put(Codes.PASSWORD_INAPT      , PASSWORD_INAPT      );
         e.put(Codes.REQUEST_PARAMS_EMPTY, REQUEST_PARAMS_EMPTY);
         e.put(Codes.LOGIN_FAILED        , LOGIN_FAILED        );
+        e.put(Codes.TERM_IS_NOT_VALID   , TERM_IS_NOT_VALID   );
+        e.put(Codes.INACTIVE_SESSION_ID , INACTIVE_SESSION_ID );
 
         return e;
     }

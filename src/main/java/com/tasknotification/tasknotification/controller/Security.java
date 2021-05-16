@@ -6,11 +6,11 @@ import javax.crypto.*;
 import javax.crypto.spec.*;
 
 public class Security {
-    private static final String initVector = "initVectorKey123";
-    private static final String key = "aesEncryptionKey";
+    private static final String initVector = "initVectorKey123";//Cfg.getInitVector();
+    private static final String key        = "aesEncryptionKey";//Cfg.getKey()       ;
 
-    public static String encrypt(String toBeEncrypted) {
-
+    public static String encrypt(String toBeEncrypted)
+    {
         String          es ;
         byte[]          eb ;
         IvParameterSpec iv ;
@@ -33,8 +33,8 @@ public class Security {
         }
     }
 
-    public static String decrypt(byte[] encrypted) {
-
+    public static String decrypt(byte[] encrypted)
+    {
         String          or ;
         IvParameterSpec iv ;
         SecretKeySpec   sks;

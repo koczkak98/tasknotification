@@ -1,4 +1,4 @@
-package com.tasknotification.tasknotification.model;
+package com.tasknotification.tasknotification.model.model;
 
 public abstract class Request {
     public String getId          () { return id          ;}

@@ -1,6 +1,6 @@
 package com.tasknotification.tasknotification.model.login;
 
-import com.tasknotification.tasknotification.model.*;
+import com.tasknotification.tasknotification.model.model.Request;
 
 public class LogInRequest extends Request {
 

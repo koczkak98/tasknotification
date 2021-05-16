@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.*;
 import org.springframework.data.repository.query.*;
 
-public interface UserAccountsRepository extends Repository<UserAccountsBase, Integer> {
+public interface UserAccountsDao extends Repository<UserAccountsBase, Integer> {
     @Query("SELECT ua FROM UserAccountsBase ua WHERE ua.emailAddress=:emailAddress")
     List<UserAccountsBase> findByEmailAddress(@Param("emailAddress") String s);
     @Query("SELECT ua FROM UserAccountsBase ua WHERE ua.emailAddress=:emailAddress AND ua.passWord=:password")

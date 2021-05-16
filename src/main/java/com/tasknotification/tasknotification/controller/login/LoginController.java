@@ -12,15 +12,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class LoginController {
     @Autowired
-    UserAccountsRepository userAccountsRepo;
+    UserAccountsDao userAccountsRepo;
     @Autowired
-    LoginRepository        loginRepo       ;
+    LoginDao        loginRepo       ;
 
     @GetMapping("/login")
     public LogInResponse sendLogin(@RequestParam("emailaddress") String emailAddress,
                                    @RequestParam("password") String password,
-                                   HttpServletRequest request,
-                                   HttpServletResponse response)
+                                   HttpServletRequest request)
     {
         LogInRequest           r;
         LogInResponse          s;
@@ -28,27 +27,23 @@ public class LoginController {
 
         r = getLoginRequest(emailAddress, password);
         s = getLoginResponse(r);
-        try {
-            if (isLoginSuccess(s.getCode())) {
-                saveLoginBase(Security.encrypt(emailAddress), Security.encrypt(password));
-                i = getSession(request);
-                s.setSessionId(Security.encrypt(i.getId()));
-                validateSession(i, Security.encrypt(emailAddress));
-            } else {
-                throw new RuntimeException("LoginError");
-            }
-        } catch (Exception e) { }
 
+        if (isLoginSuccess(s)) {
+            saveLoginBase(r);
+            i = getSession(request);
+            s.setSessionId(Security.encrypt(i.getId()));
+            validateSession(i, Security.encrypt(emailAddress));
+        }
         return s;
     }
 
-    protected void saveLoginBase(String e, String p)
+    protected void saveLoginBase(LogInRequest r)
     {
         LoginBase        l;
         UserAccountsBase a;
 
         l = new LoginBase();
-        a = getUserAccountsBase(e, p);
+        a = getUserAccountsBase(Security.encrypt(r.getEmailAddress()), Security.encrypt(r.getPassword()));
 
         this.loginRepo.save(l);
         a.addLoginId(l.getId());
@@ -86,62 +81,36 @@ public class LoginController {
     protected LogInResponse createLoginResponse(LogInRequest r)
     {
         LogInResponse s;
+        String e;
+        String p;
 
         s = new LogInResponse();
+        e = Security.encrypt(r.getEmailAddress());
+        p = Security.encrypt(r.getPassword());
+
         s.setReqId(r.getId());
 
-        s.setResult(getResult(r));
-        s.setCode(getCode(r));
-        s.setMessage("");
+        if (isRequestValid(r)) {
+            if (!isLoginDataSuccess(e, p)) {
+                s.setResult("ERR");
+                s.setCode(CodesSet.getCode(Codes.LOGIN_FAILED));
+                s.setMessage(Codes.LOGIN_FAILED.toString());
+            } else {
+                s.setResult("OK");
+                s.setCode(CodesSet.getCode(Codes.SUCCESS));
+                s.setMessage(Codes.SUCCESS.toString());
+            }
+        } else {
+            s.setResult("ERR");
+            s.setCode(CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY));
+            s.setMessage(Codes.REQUEST_PARAMS_EMPTY.toString());
+        }
 
         return s;
     }
 
-
-    protected String getResult (LogInRequest r) { return generateResult(r);}
-
-    protected synchronized String generateResult (LogInRequest r)
-    {
-        String e;
-        String p;
-
-        e = Security.encrypt(r.getEmailAddress());
-        p = Security.encrypt(r.getPassword());
-
-        if (isRequestValid(r)) {
-            if (!isLoginDataSuccess(e, p)) {
-                return "ERR";
-            }
-        } else {
-            return "ERR";
-        }
-        return "OK";
-    }
-    protected int getCode(LogInRequest r) { return generateCode(r);}
-
-    protected synchronized int generateCode(LogInRequest r)
-    {
-        String e;
-        String p;
-
-        e = Security.encrypt(r.getEmailAddress());
-        p = Security.encrypt(r.getPassword());
-
-        if(isRequestValid(r)) {
-            if (isResultOk(getResult(r))) {
-                if(!isLoginDataSuccess(e,p)){
-                    return CodesSet.getCode(Codes.LOGIN_FAILED);
-                }
-            }
-        } else {
-            return CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY);
-        }
-        return CodesSet.getCode(Codes.SUCCESS);
-    }
-
-    protected boolean isLoginSuccess(int c) { return c==0;}
-    protected boolean isRequestValid(LogInRequest r     ) { return r.getEmailAddress()!= null && r.getPassword() != null;}
-    protected boolean isResultOk    (String       result) { return result.equals("OK");}
+    protected boolean isLoginSuccess(LogInResponse c) { return c.getCode()==0;}
+    protected boolean isRequestValid(LogInRequest  r) { return r.getEmailAddress()!= null && r.getPassword() != null;}
     protected boolean isLoginDataSuccess(String e, String p) {
         return this.userAccountsRepo.findByEmailAddressAndPwd(e, p) != null
                 && this.userAccountsRepo.findByEmailAddressAndPwd(e, p).size() == 1;}

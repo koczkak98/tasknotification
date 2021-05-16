@@ -1,6 +1,6 @@
 package com.tasknotification.tasknotification.model.singup;
 
-import com.tasknotification.tasknotification.model.*;
+import com.tasknotification.tasknotification.model.model.Request;
 
 public class SingUpRequest extends Request {
 
