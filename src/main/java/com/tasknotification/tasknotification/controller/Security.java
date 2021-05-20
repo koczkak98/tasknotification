@@ -6,8 +6,8 @@ import javax.crypto.*;
 import javax.crypto.spec.*;
 
 public class Security {
-    private static final String initVector = "initVectorKey123";//Cfg.getInitVector();
-    private static final String key        = "aesEncryptionKey";//Cfg.getKey()       ;
+    private static final String initVector = Cfg.getInitVector();
+    private static final String key        = Cfg.getKey()       ;
 
     public static String encrypt(String toBeEncrypted)
     {
@@ -19,7 +19,7 @@ public class Security {
 
         try {
             iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
-            sks = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
+            sks = new SecretKeySpec(key.getBytes("UTF-8"), "AES-256");
 
             ci = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             ci.init(Cipher.ENCRYPT_MODE, sks, iv);
@@ -42,7 +42,7 @@ public class Security {
 
         try {
             iv = new IvParameterSpec(initVector.getBytes("UTF-8"));
-            sks = new SecretKeySpec(key.getBytes("UTF-8"), "AES");
+            sks = new SecretKeySpec(key.getBytes("UTF-8"), "AES-256");
 
             ci = Cipher.getInstance("AES/CBC/PKCS5PADDING");
             ci.init(Cipher.DECRYPT_MODE, sks, iv);
