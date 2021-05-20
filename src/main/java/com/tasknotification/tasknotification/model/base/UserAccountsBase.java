@@ -9,14 +9,12 @@ import java.util.*;
 @Table(name = "user_accounts")
 public class UserAccountsBase extends BaseEntity {
     public String       getEmailAddress  () { return emailAddress;}
-    public String       getPassWord      () { return passWord    ;}
     public String       getName          () { return name        ;}
     public SingUpBase   getSingUpId      () { return singUpId    ;}
     public List<String> getLogInIds      () { return logInIds    ;}
     public List<String> getTaskIds       () { return taskIds     ;}
 
     public void setEmailAddress(String       eMailAddress) { this.emailAddress = eMailAddress;}
-    public void setPassWord    (String       passWord    ) { this.passWord     = passWord    ;}
     public void setName        (String       name        ) { this.name         = name        ;}
     public void setSingUpId    (SingUpBase   singUpId    ) { this.singUpId     = singUpId    ;}
     public void setLogInIds    (List<String> logInIds    ) { this.logInIds     = logInIds    ;}
@@ -27,8 +25,6 @@ public class UserAccountsBase extends BaseEntity {
 
     @Column(name = "email_address")
     protected String emailAddress;
-    @Column(name = "password")
-    protected String passWord       ;
     @Column(name = "name")
     protected String name           ;
     @OneToOne

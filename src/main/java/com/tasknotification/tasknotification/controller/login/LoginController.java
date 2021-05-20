@@ -18,21 +18,26 @@ public class LoginController {
 
     @GetMapping("/login")
     public LogInResponse sendLogin(@RequestParam("emailaddress") String emailAddress,
-                                   @RequestParam("password") String password,
                                    HttpServletRequest request)
     {
         LogInRequest           r;
         LogInResponse          s;
         HttpSession            i;
 
-        r = getLoginRequest(emailAddress, password);
+        r = getLoginRequest(emailAddress);
         s = getLoginResponse(r);
 
-        if (isLoginSuccess(s)) {
-            saveLoginBase(r);
-            i = getSession(request);
-            s.setSessionId(Security.encrypt(i.getId()));
-            validateSession(i, Security.encrypt(emailAddress));
+        try {
+            if (isLoginSuccess(s)) {
+                saveLoginBase(r);
+                i = getSession(request);
+                s.setSessionId(i.getId());
+                validateSession(i, Security.encrypt(emailAddress));
+            }
+        } catch (Exception e) {
+            s.setResult(Results.ERR.toString());
+            s.setCode(CodesSet.getCode(Codes.UNKNOWN_ERROR));
+            s.setMessage("[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
         }
         return s;
     }
@@ -43,14 +48,14 @@ public class LoginController {
         UserAccountsBase a;
 
         l = new LoginBase();
-        a = getUserAccountsBase(Security.encrypt(r.getEmailAddress()), Security.encrypt(r.getPassword()));
+        a = getUserAccountsBase(Security.encrypt(r.getEmailAddress()));
 
         this.loginRepo.save(l);
         a.addLoginId(l.getId());
         this.userAccountsRepo.save(a);
     }
 
-    protected UserAccountsBase getUserAccountsBase(String e, String p) { return userAccountsRepo.findByEmailAddressAndPwd(e, p).get(0);}
+    protected UserAccountsBase getUserAccountsBase(String e) { return userAccountsRepo.findByEmailAddress(e).get(0);}
 
     protected void validateSession(HttpSession s, String e) { s.setAttribute("user", e); }
 
@@ -63,15 +68,14 @@ public class LoginController {
         return s;
     }
 
-    protected LogInRequest getLoginRequest(String e, String p) { return createLoginRequest(e, p);}
+    protected LogInRequest getLoginRequest(String e) { return createLoginRequest(e);}
 
-    protected LogInRequest createLoginRequest(String e, String p)
+    protected LogInRequest createLoginRequest(String e)
     {
         LogInRequest r;
 
         r = new LogInRequest();
         r.setEmailAddress(e);
-        r.setPassword(p);
 
         return r;
     }
@@ -82,26 +86,23 @@ public class LoginController {
     {
         LogInResponse s;
         String e;
-        String p;
 
         s = new LogInResponse();
         e = Security.encrypt(r.getEmailAddress());
-        p = Security.encrypt(r.getPassword());
-
         s.setReqId(r.getId());
 
         if (isRequestValid(r)) {
-            if (!isLoginDataSuccess(e, p)) {
-                s.setResult("ERR");
+            if (!isLoginDataSuccess(e)) {
+                s.setResult(Results.ERR.toString());
                 s.setCode(CodesSet.getCode(Codes.LOGIN_FAILED));
                 s.setMessage(Codes.LOGIN_FAILED.toString());
             } else {
-                s.setResult("OK");
+                s.setResult(Results.OK.toString());
                 s.setCode(CodesSet.getCode(Codes.SUCCESS));
                 s.setMessage(Codes.SUCCESS.toString());
             }
         } else {
-            s.setResult("ERR");
+            s.setResult(Results.ERR.toString());
             s.setCode(CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY));
             s.setMessage(Codes.REQUEST_PARAMS_EMPTY.toString());
         }
@@ -110,9 +111,9 @@ public class LoginController {
     }
 
     protected boolean isLoginSuccess(LogInResponse c) { return c.getCode()==0;}
-    protected boolean isRequestValid(LogInRequest  r) { return r.getEmailAddress()!= null && r.getPassword() != null;}
-    protected boolean isLoginDataSuccess(String e, String p) {
-        return this.userAccountsRepo.findByEmailAddressAndPwd(e, p) != null
-                && this.userAccountsRepo.findByEmailAddressAndPwd(e, p).size() == 1;}
+    protected boolean isRequestValid(LogInRequest  r) { return r.getEmailAddress()!= null;}
+    protected boolean isLoginDataSuccess(String e) {
+        return this.userAccountsRepo.findByEmailAddress(e)!= null
+                && this.userAccountsRepo.findByEmailAddress(e).size() == 1;}
 
 }

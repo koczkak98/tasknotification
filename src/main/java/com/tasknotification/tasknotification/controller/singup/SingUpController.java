@@ -1,13 +1,11 @@
 package com.tasknotification.tasknotification.controller.singup;
 
-import com.tasknotification.tasknotification.controller.Codes;
-import com.tasknotification.tasknotification.controller.CodesSet;
-import com.tasknotification.tasknotification.controller.Security;
+import com.tasknotification.tasknotification.controller.*;
 import com.tasknotification.tasknotification.db.SingUpDao;
 import com.tasknotification.tasknotification.db.UserAccountsDao;
 import com.tasknotification.tasknotification.model.base.*;
 import com.tasknotification.tasknotification.model.singup.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.*;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,7 +17,6 @@ public class SingUpController {
 
     @GetMapping("/sendsingup")
     public SingUpResponse getSingUp(@RequestParam("emailaddress") String emailAddress,
-                                    @RequestParam("password") String password,
                                     @RequestParam("name") String name)
     {
         SingUpRequest    r;
@@ -27,14 +24,20 @@ public class SingUpController {
         SingUpBase       i;
         UserAccountsBase a;
 
-        r      = getSingUpRequest(emailAddress, password, name);
+        r      = getSingUpRequest(emailAddress, name);
         s      = getSingUpResponse(r);
         i      = new SingUpBase();
 
-        if (isSingUpSuccess(s.getCode())) {
-            saveSingUpBase(i);
-            a = getUserAccountsBase(r,i);
-            saveUserAccountsBase(a);
+        try {
+            if (isSingUpSuccess(s.getCode())) {
+                saveSingUpBase(i);
+                a = getUserAccountsBase(r, i);
+                saveUserAccountsBase(a);
+            }
+        } catch (Exception e) {
+            s.setResult(Results.ERR.toString());
+            s.setCode(CodesSet.getCode(Codes.UNKNOWN_ERROR));
+            s.setMessage("[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
         }
         return s;
     }
@@ -51,8 +54,7 @@ public class SingUpController {
 
         a = new UserAccountsBase();
 
-        a.setEmailAddress(Security.encrypt(r.getEmailAddress()));
-        a.setPassWord(Security.encrypt(r.getPassword()));
+        a.setEmailAddress(r.getEmailAddress());
         a.setName(r.getName());
         a.setSingUpId(s);
         a.addLoginId(null);
@@ -60,14 +62,13 @@ public class SingUpController {
         return a;
     }
 
-    public SingUpRequest getSingUpRequest(String e, String pwd, String n) { return createSingUpRequest(e, pwd, n);}
+    public SingUpRequest getSingUpRequest(String e, String n) { return createSingUpRequest(e, n);}
 
-    protected SingUpRequest createSingUpRequest(String e, String pwd, String n)
+    protected SingUpRequest createSingUpRequest(String e, String n)
     {
         SingUpRequest r;
         r = new SingUpRequest();
         r.setEmailAddress(e);
-        r.setPassword(pwd);
         r.setName(n);
 
         return  r;
@@ -83,30 +84,25 @@ public class SingUpController {
 
         s = new SingUpResponse();
         e = r.getEmailAddress();
-        p = r.getPassword();
 
         s.setReqId(r.getId());
 
         if (isRequestValid(r)) {
             if (existsEmailAddress(e)) {
-                s.setResult("ERR");
+                s.setResult(Results.ERR.toString());
                 s.setCode(CodesSet.getCode(Codes.EXISTING_EMAIL));
                 s.setMessage(Codes.EXISTING_EMAIL.toString());
             } else if (emailAddressIsNotValid(e)) {
-                s.setResult("ERR");
+                s.setResult(Results.ERR.toString());
                 s.setCode(CodesSet.getCode(Codes.VALIDATION_ERR));
                 s.setMessage(Codes.VALIDATION_ERR.toString());
-            } else if (!isPasswordCharsEnough(p)) {
-                s.setResult("ERR");
-                s.setCode(CodesSet.getCode(Codes.PASSWORD_INAPT));
-                s.setMessage(Codes.PASSWORD_INAPT.toString());
             } else {
-                s.setResult("OK");
+                s.setResult(Results.OK.toString());
                 s.setCode(CodesSet.getCode(Codes.SUCCESS));
                 s.setMessage(Codes.SUCCESS.toString());
             }
         } else {
-            s.setResult("ERR");
+            s.setResult(Results.ERR.toString());
             s.setCode(CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY));
             s.setMessage(Codes.REQUEST_PARAMS_EMPTY.toString());
         }
@@ -115,8 +111,7 @@ public class SingUpController {
     }
 
     protected boolean isSingUpSuccess       (int           c) {return c==0;}
-    protected boolean isRequestValid        (SingUpRequest r) { return r.getEmailAddress() != null && r.getPassword() != null && r.getName() != null;}
-    protected boolean existsEmailAddress    (String s       ) { return userAccountsRepo.findByEmailAddress(Security.encrypt(s)).size() > 0;}
+    protected boolean isRequestValid        (SingUpRequest r) { return r.getEmailAddress() != null && r.getName() != null;}
+    protected boolean existsEmailAddress    (String s       ) { return userAccountsRepo.findByEmailAddress(s).size() > 0;}
     protected boolean emailAddressIsNotValid(String s       ) { return s.equals("validationErr")                     ;}
-    protected boolean isPasswordCharsEnough (String s       ) { return s.length()>=8                                 ;}
 }

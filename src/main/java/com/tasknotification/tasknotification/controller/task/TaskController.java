@@ -23,7 +23,7 @@ public class TaskController {
     public TaskResponse sendTask(@RequestParam("object"         ) String object         ,
                                  @RequestParam("message"        ) String message        ,
                                  @RequestParam("term"           ) String term           ,
-                                 @RequestParam("gracetimeperiod") String graceTimePeriod,
+                                 @RequestParam("gracetimeperiod") int    graceTimePeriod,
                                  @RequestParam("addresseeemail" ) String addresseeEmail ,
                                  @CookieValue(value = "JSESSIONID", defaultValue = "INVALID_USER") String sessionId,
                                  HttpServletRequest request)
@@ -33,24 +33,28 @@ public class TaskController {
         HttpSession  i;
         TaskResponse s;
 
-        r = getTaskRequest(sessionId, object, message, term, graceTimePeriod, addresseeEmail);
         i = request.getSession(false);
+        r = getTaskRequest(i, sessionId, object, message, term, graceTimePeriod, addresseeEmail);
         s = getTaskResponse(r, i);
         try {
             if (isUserValid(s)) {
-                saveTask(r, i);
+                saveTask(r);
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            s.setResult(Results.ERR.toString());
+            s.setCode(CodesSet.getCode(Codes.UNKNOWN_ERROR));
+            s.setMessage("[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
+        }
         return s;
     }
 
-    protected void saveTask(TaskRequest r, HttpSession s)
+    protected void saveTask(TaskRequest r)
     {
         TaskBase         t;
         UserAccountsBase a;
 
         t = getTask(r);
-        a = getUserAccountsBase(s);
+        a = getUserAccountsBase(r.getEmailAddress());
 
         taskRepo.save(t);
         a.addTaskId(t.getId());
@@ -74,19 +78,20 @@ public class TaskController {
         return t;
     }
 
-    protected TaskRequest getTaskRequest(String JSessionId, String object, String message, String term,
-                                            String graceTimePeriod, String addresseeEmail)
+    protected TaskRequest getTaskRequest(HttpSession session, String JSessionId, String object, String message, String term,
+                                            int graceTimePeriod, String addresseeEmail)
     {
-        return createTaskRequest(JSessionId, object, message, term, graceTimePeriod, addresseeEmail);
+        return createTaskRequest(session, JSessionId, object, message, term, graceTimePeriod, addresseeEmail);
     }
 
-    protected TaskRequest createTaskRequest(String JSessionId, String object, String message, String term,
-                                            String graceTimePeriod, String addresseeEmail)
+    protected TaskRequest createTaskRequest(HttpSession session, String JSessionId, String object, String message, String term,
+                                            int graceTimePeriod, String addresseeEmail)
     {
         TaskRequest  r;
 
         r = new TaskRequest();
 
+        r.setEmailAddress(session.getAttribute("user").toString());
         r.setUserSessionId(JSessionId);
         r.setObject(object);
         r.setMessage(message);
@@ -111,20 +116,20 @@ public class TaskController {
 
         if (isRequestValid(r)) {
             if (!isTermValid(r.getTerm())) {
-                s.setResult("ERR");
+                s.setResult(Results.ERR.toString());
                 s.setCode(CodesSet.getCode(Codes.TERM_IS_NOT_VALID));
                 s.setMessage(Codes.TERM_IS_NOT_VALID.toString());
-            } else if (isSessionValid(Security.decrypt(r.getUserSessionId().getBytes()), session)) {
-                s.setResult("ERR");
+            } else if (!isSessionValid(r.getUserSessionId(), session)) {
+                s.setResult(Results.ERR.toString());
                 s.setCode(CodesSet.getCode(Codes.INACTIVE_SESSION_ID));
                 s.setMessage(Codes.INACTIVE_SESSION_ID.toString());
             } else {
-                s.setResult("OK");
+                s.setResult(Results.OK.toString());
                 s.setCode(CodesSet.getCode(Codes.SUCCESS));
                 s.setMessage(Codes.SUCCESS.toString());
             }
         } else {
-            s.setResult("ERR");
+            s.setResult(Results.ERR.toString());
             s.setCode(CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY));
             s.setMessage(Codes.REQUEST_PARAMS_EMPTY.toString());
         }
@@ -132,7 +137,7 @@ public class TaskController {
         return s;
     }
 
-    protected UserAccountsBase getUserAccountsBase(HttpSession s) { return userAccountsRepo.findByEmailAddress(s.getAttribute("user").toString()).get(0);}
+    protected UserAccountsBase getUserAccountsBase(String s) { return userAccountsRepo.findByEmailAddress(s).get(0);}
     protected boolean isUserValid (TaskResponse s) { return s.getCode()==0;}
     protected boolean isSessionValid(String sessionId, HttpSession  session)
     {
@@ -145,7 +150,7 @@ public class TaskController {
     protected boolean isRequestValid(TaskRequest  r)
     {
         return r.getObject() != null && r.getMessage() != null && r.getTerm() != null
-                    && r.getGraceTimePeriod() != null && r.getAddresseeEmail() != null;
+                    && r.getGraceTimePeriod() != 0 && r.getAddresseeEmail() != null;
     }
     protected boolean isTermValid(String term)
             throws ParseException
@@ -153,6 +158,6 @@ public class TaskController {
         long d;
 
         d = 1000 * 60 * 60 * 24;
-        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(term).getTime() > new Date().getTime() + d;
+        return new SimpleDateFormat("yyyy-MM-ddHH:mm:ss").parse(term).getTime() > new Date().getTime() + d;
     }
 }
