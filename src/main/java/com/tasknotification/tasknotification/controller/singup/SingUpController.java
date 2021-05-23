@@ -35,35 +35,12 @@ public class SingUpController {
                 saveUserAccountsBase(a);
             }
         } catch (Exception e) {
-            s.setResult(Results.ERR.toString());
-            s.setCode(CodesSet.getCode(Codes.UNKNOWN_ERROR));
-            s.setMessage("[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
+            s = createSingUpResponse(s, Results.ERR, Codes.UNKNOWN_ERROR, "[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
         }
         return s;
     }
 
-
-    public void saveUserAccountsBase(UserAccountsBase a) { userAccountsRepo.save(a);}
-    public void saveSingUpBase      (SingUpBase       s) { singUpRepo      .save(s);}
-
-    public UserAccountsBase getUserAccountsBase(SingUpRequest r, SingUpBase s) { return createUserAccountsBase(r,s);}
-
-    protected UserAccountsBase createUserAccountsBase(SingUpRequest r, SingUpBase s)
-    {
-        UserAccountsBase a;
-
-        a = new UserAccountsBase();
-
-        a.setEmailAddress(r.getEmailAddress());
-        a.setName(r.getName());
-        a.setSingUpId(s);
-        a.addLoginId(null);
-
-        return a;
-    }
-
     public SingUpRequest getSingUpRequest(String e, String n) { return createSingUpRequest(e, n);}
-
     protected SingUpRequest createSingUpRequest(String e, String n)
     {
         SingUpRequest r;
@@ -75,43 +52,67 @@ public class SingUpController {
     }
 
     public SingUpResponse getSingUpResponse(SingUpRequest r) { return createSingUpResponse(r);}
-
     protected SingUpResponse createSingUpResponse(SingUpRequest r)
     {
         SingUpResponse s;
-        String e;
-        String p;
 
         s = new SingUpResponse();
-        e = r.getEmailAddress();
 
         s.setReqId(r.getId());
+        s = getSingUpResponse(r, s);
+
+        return s;
+    }
+    protected SingUpResponse getSingUpResponse(SingUpRequest r, SingUpResponse s) { return checkSingUpResponse(r, s);}
+    protected SingUpResponse checkSingUpResponse(SingUpRequest r, SingUpResponse s)
+    {
+        String e;
+
+        e = r.getEmailAddress();
 
         if (isRequestValid(r)) {
             if (existsEmailAddress(e)) {
-                s.setResult(Results.ERR.toString());
-                s.setCode(CodesSet.getCode(Codes.EXISTING_EMAIL));
-                s.setMessage(Codes.EXISTING_EMAIL.toString());
+                s = createSingUpResponse(s, Results.ERR, Codes.EXISTING_EMAIL, "");
             } else if (emailAddressIsNotValid(e)) {
-                s.setResult(Results.ERR.toString());
-                s.setCode(CodesSet.getCode(Codes.VALIDATION_ERR));
-                s.setMessage(Codes.VALIDATION_ERR.toString());
+                s = createSingUpResponse(s, Results.ERR, Codes.VALIDATION_ERR, "");
             } else {
-                s.setResult(Results.OK.toString());
-                s.setCode(CodesSet.getCode(Codes.SUCCESS));
-                s.setMessage(Codes.SUCCESS.toString());
+                s = createSingUpResponse(s, Results.OK, Codes.SUCCESS, "");
             }
         } else {
-            s.setResult(Results.ERR.toString());
-            s.setCode(CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY));
-            s.setMessage(Codes.REQUEST_PARAMS_EMPTY.toString());
+            s = createSingUpResponse(s, Results.ERR, Codes.REQUEST_PARAMS_EMPTY, "");
         }
 
         return s;
     }
+    protected SingUpResponse createSingUpResponse(SingUpResponse s, Results r, Codes c, String m)
+    {
+        s.setResult(r.toString());
+        s.setCode(CodesSet.getCode(c));
+        s.setMessage(m);
 
-    protected boolean isSingUpSuccess       (int           c) {return c==0;}
+        return s;
+    }
+
     protected boolean isRequestValid        (SingUpRequest r) { return r.getEmailAddress() != null && r.getName() != null;}
-    protected boolean existsEmailAddress    (String s       ) { return userAccountsRepo.findByEmailAddress(s).size() > 0;}
-    protected boolean emailAddressIsNotValid(String s       ) { return s.equals("validationErr")                     ;}
+    protected boolean existsEmailAddress    (String        s) { return userAccountsRepo.findByEmailAddress(s).size() > 0;}
+    protected boolean emailAddressIsNotValid(String        s) { return s.equals("validationErr")                     ;}
+
+    protected boolean isSingUpSuccess       (int           c) { return c==0;}
+
+    protected UserAccountsBase getUserAccountsBase(SingUpRequest r, SingUpBase s) { return createUserAccountsBase(r,s);}
+    protected UserAccountsBase createUserAccountsBase(SingUpRequest r, SingUpBase s)
+    {
+        UserAccountsBase a;
+
+        a = new UserAccountsBase();
+
+        a.setEmailAddress(r.getEmailAddress());
+        a.setName(r.getName());
+        a.setSingUpId(s);
+
+        return a;
+    }
+
+    public void saveSingUpBase      (SingUpBase       s) { singUpRepo      .save(s);}
+    public void saveUserAccountsBase(UserAccountsBase a) { userAccountsRepo.save(a);}
 }

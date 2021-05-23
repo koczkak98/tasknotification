@@ -28,43 +28,15 @@ public class LoginController {
         s = getLoginResponse(r);
 
         try {
-            if (isLoginSuccess(s)) {
+            if (findUserAccount(s)) {
                 saveLoginBase(r);
                 i = getSession(request);
                 s.setSessionId(i.getId());
-                validateSession(i, Security.encrypt(emailAddress));
+                validateSession(i, emailAddress);
             }
         } catch (Exception e) {
-            s.setResult(Results.ERR.toString());
-            s.setCode(CodesSet.getCode(Codes.UNKNOWN_ERROR));
-            s.setMessage("[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
+            s = createLogInResponse(s, Results.ERR, Codes.UNKNOWN_ERROR, "[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
         }
-        return s;
-    }
-
-    protected void saveLoginBase(LogInRequest r)
-    {
-        LoginBase        l;
-        UserAccountsBase a;
-
-        l = new LoginBase();
-        a = getUserAccountsBase(Security.encrypt(r.getEmailAddress()));
-
-        this.loginRepo.save(l);
-        a.addLoginId(l.getId());
-        this.userAccountsRepo.save(a);
-    }
-
-    protected UserAccountsBase getUserAccountsBase(String e) { return userAccountsRepo.findByEmailAddress(e).get(0);}
-
-    protected void validateSession(HttpSession s, String e) { s.setAttribute("user", e); }
-
-    protected HttpSession getSession (HttpServletRequest r) { return createSession(r)     ;}
-    protected HttpSession createSession (HttpServletRequest r) {
-        HttpSession  s;
-        s = r.getSession();
-        s.setMaxInactiveInterval(30);
-
         return s;
     }
 
@@ -81,39 +53,73 @@ public class LoginController {
     }
 
     protected LogInResponse getLoginResponse(LogInRequest r) { return createLoginResponse(r);}
-
     protected LogInResponse createLoginResponse(LogInRequest r)
     {
         LogInResponse s;
-        String e;
 
         s = new LogInResponse();
-        e = Security.encrypt(r.getEmailAddress());
         s.setReqId(r.getId());
+
+        s = getLogInResponse(r, s);
+
+        return s;
+    }
+    protected LogInResponse getLogInResponse(LogInRequest r, LogInResponse s) { return checkLogInResponse(r, s);}
+    protected LogInResponse checkLogInResponse(LogInRequest r, LogInResponse s)
+    {
+        String e;
+
+        e = r.getEmailAddress();
 
         if (isRequestValid(r)) {
             if (!isLoginDataSuccess(e)) {
-                s.setResult(Results.ERR.toString());
-                s.setCode(CodesSet.getCode(Codes.LOGIN_FAILED));
-                s.setMessage(Codes.LOGIN_FAILED.toString());
+                s = createLogInResponse(s, Results.ERR, Codes.LOGIN_FAILED,"");
             } else {
-                s.setResult(Results.OK.toString());
-                s.setCode(CodesSet.getCode(Codes.SUCCESS));
-                s.setMessage(Codes.SUCCESS.toString());
+                s = createLogInResponse(s, Results.OK, Codes.SUCCESS,"");
             }
         } else {
-            s.setResult(Results.ERR.toString());
-            s.setCode(CodesSet.getCode(Codes.REQUEST_PARAMS_EMPTY));
-            s.setMessage(Codes.REQUEST_PARAMS_EMPTY.toString());
+            s = createLogInResponse(s, Results.ERR, Codes.REQUEST_PARAMS_EMPTY,"");
         }
+        return s;
+    }
+    protected LogInResponse createLogInResponse(LogInResponse s, Results r, Codes c, String m)
+    {
+        s.setResult(r.toString());
+        s.setCode(CodesSet.getCode(c));
+        s.setMessage(m);
 
         return s;
     }
 
-    protected boolean isLoginSuccess(LogInResponse c) { return c.getCode()==0;}
     protected boolean isRequestValid(LogInRequest  r) { return r.getEmailAddress()!= null;}
     protected boolean isLoginDataSuccess(String e) {
         return this.userAccountsRepo.findByEmailAddress(e)!= null
                 && this.userAccountsRepo.findByEmailAddress(e).size() == 1;}
+
+    protected boolean findUserAccount(LogInResponse c) { return c.getCode()==0;}
+
+    protected void saveLoginBase(LogInRequest r)
+    {
+        LoginBase        l;
+        UserAccountsBase a;
+
+        l = new LoginBase();
+        a = getUserAccountsBase(r.getEmailAddress());
+
+        this.loginRepo.save(l);
+        a.addLoginId(l.getId());
+        this.userAccountsRepo.save(a);
+    }
+    protected UserAccountsBase getUserAccountsBase(String e) { return userAccountsRepo.findByEmailAddress(e).get(0);}
+
+    protected HttpSession getSession (HttpServletRequest r) { return createSession(r)     ;}
+    protected HttpSession createSession (HttpServletRequest r) {
+        HttpSession  s;
+        s = r.getSession();
+
+        return s;
+    }
+
+    protected void validateSession(HttpSession s, String e) { s.setAttribute("user", e); }
 
 }

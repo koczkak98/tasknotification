@@ -12,13 +12,13 @@ public class TaskBase extends DateTimeEntity {
     public String getObject         () { return object         ;}
     public String getMessage        () { return message        ;}
     public String getTerm           () { return term           ;}
-    public int    getGraceTimePeriod() { return graceTimePeriod;}
+    public int    getGracePeriod    () { return gracePeriod    ;}
     public String getAddresseeMail  () { return addresseeMail  ;}
 
     public void setObject         (String object         ) { this.object          = object         ;}
     public void setMessage        (String message        ) { this.message         = message        ;}
     public void setTerm           (String term           ) { this.term            = term           ;}
-    public void setGraceTimePeriod(int graceTimePeriod   ) { this.graceTimePeriod = graceTimePeriod;}
+    public void setGracePeriod    (int    gracePeriod    ) { this.gracePeriod     = gracePeriod    ;}
     public void setAddresseeMail  (String addresseeMail  ) { this.addresseeMail   = addresseeMail  ;}
 
     @Column
@@ -27,8 +27,8 @@ public class TaskBase extends DateTimeEntity {
     protected String message        ;
     @Column
     protected String term           ;
-    @Column(name = "grace_time_period")
-    protected int graceTimePeriod;
+    @Column(name = "grace_period")
+    protected int    gracePeriod    ;
     @Column(name= "addressee_email")
     protected String addresseeMail  ;
 
