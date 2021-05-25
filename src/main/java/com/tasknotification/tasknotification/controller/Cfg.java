@@ -9,4 +9,6 @@ public class Cfg {
     public static int getObjectMinCharLength () { return 2  ;} //return Integer.parseInt(System.getProperty("object.min.char.length"));}
     public static int getMessageMaxCharLength() { return 256;} //return Integer.parseInt(System.getProperty("message.max.char.length"));}
     public static int getMessageMinCharLength() { return 10 ;} //return Integer.parseInt(System.getProperty("message.min.char.length"));}
+
+    public static String getSubordinateIdCount() { return "1000";} //return System.getProperty("subordinate.id.count");}
 }

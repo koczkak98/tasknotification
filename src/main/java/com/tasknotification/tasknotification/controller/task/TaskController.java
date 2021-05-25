@@ -4,6 +4,8 @@ import com.tasknotification.tasknotification.controller.*;
 import com.tasknotification.tasknotification.db.*;
 import com.tasknotification.tasknotification.model.base.TaskBase;
 import com.tasknotification.tasknotification.model.base.UserAccountsBase;
+import com.tasknotification.tasknotification.model.sendemail.SendEmailRequest;
+import com.tasknotification.tasknotification.model.sendemail.SendEmailResponse;
 import com.tasknotification.tasknotification.model.task.*;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.web.bind.annotation.*;
@@ -18,41 +20,78 @@ public class TaskController {
     protected UserAccountsDao userAccountsRepo;
     @Autowired
     protected TaskDao         taskRepo        ;
+    @Autowired
+    protected SubordinateDao  subordinateRepo ;
 
     @GetMapping("/addtask")
-    public TaskResponse sendTask(@RequestParam("object"         ) String object         ,
-                                 @RequestParam("message"        ) String message        ,
-                                 @RequestParam("term"           ) String term           ,
-                                 @RequestParam("graceperiod"    ) int    gracePeriod    ,
-                                 @RequestParam("addresseeemail" ) String addresseeEmail ,
-                                 @CookieValue(value = "JSESSIONID", defaultValue = "INVALID_USER") String sessionId,
-                                 HttpServletRequest request)
+    public SendEmailResponse sendTask(@RequestParam("object"         ) String object         ,
+                                      @RequestParam("message"        ) String message        ,
+                                      @RequestParam("term"           ) String term           ,
+                                      @RequestParam("graceperiod"    ) int    gracePeriod    ,
+                                      @RequestParam("subordinate"    ) String id             ,
+                                      @CookieValue(value = "JSESSIONID", defaultValue = "INVALID_USER") String sessionId,
+                                      HttpServletRequest request)
     {
-        HttpSession  i;
-        TaskRequest  r;
-        TaskResponse s;
+        HttpSession        i;
+        TaskRequest        r;
+        SendEmailRequest  e1;
+        SendEmailResponse e2;
 
         i = request.getSession(false);
-        r = getTaskRequest(i, sessionId, object, message, term, gracePeriod, addresseeEmail);
+        r = getTaskRequest(i, sessionId, object, message, term, gracePeriod, id);
+
+        if (isTaskSavingSuccess(i, r)) {
+            System.out.println("DONE");
+        }
+
+        return new SendEmailResponse();
+    }
+
+    protected SendEmailRequest getSendEmailRequest(TaskRequest tr, String sender, String addressee) { return createSendEmailRequest(tr, sender, addressee);}
+    protected SendEmailRequest createSendEmailRequest(TaskRequest tr, String sender, String addressee)
+    {
+        SendEmailRequest r;
+
+        r = new SendEmailRequest();
+
+        r.setEmailAddress(tr.getEmailAddress());
+        r.setSender(sender);
+        r.setAddressee(addressee);
+        r.setLetters(findTaskOfSubordinateIdByObject(tr.getEmailAddress(), tr.getObject(), tr.getSubordinateId()));
+
+        return r;
+    }
+
+    protected void checkSendEmail(SendEmailRequest r) {
+
+    }
+
+    /** Task saving db */
+
+    protected boolean isTaskSavingSuccess(HttpSession  i, TaskRequest  r)
+    {
+        TaskResponse s;
+
         s = getTaskResponse(r, i);
         try {
-            if (isUserValid(s)) {
+            if (isRequestSuccess(s)) {
                 saveTask(r);
             }
         } catch (Exception e) {
-            s = createTaskResponse(s, Results.ERR, Codes.REQUEST_PARAMS_EMPTY, "[ " + Codes.UNKNOWN_ERROR.toString() + " ]: " + e.getMessage());
             throw new RuntimeException(e);
         }
-        return s;
+
+        System.out.println("Response: " + s.getCode());
+        return s.getResult().equals(Results.OK.toString());
     }
 
     protected TaskRequest getTaskRequest(HttpSession session, String JSessionId, String object, String message, String term,
-                                            int graceTimePeriod, String addresseeEmail)
+                                            int graceTimePeriod, String subordinateId)
     {
-        return createTaskRequest(session, JSessionId, object, message, term, graceTimePeriod, addresseeEmail);
+        return createTaskRequest(session, JSessionId, object, message, term, graceTimePeriod, subordinateId);
     }
     protected TaskRequest createTaskRequest(HttpSession session, String JSessionId, String object, String message, String term,
-                                            int graceTimePeriod, String addresseeEmail)
+                                            int graceTimePeriod, String subordinateId)
     {
         TaskRequest  r;
 
@@ -65,7 +104,7 @@ public class TaskController {
         r.setMessage(message);
         r.setTerm(term);
         r.setGracePeriod(graceTimePeriod);
-        r.setAddresseeEmail(addresseeEmail);
+        r.setSubordinateId(subordinateId);
 
         return r;
     }
@@ -89,15 +128,17 @@ public class TaskController {
                 s = createTaskResponse(s, Results.ERR, Codes.INACTIVE_SESSION_ID, "");
             } else if (!isObjectValid(r)) {
                 s = createTaskResponse(s, Results.ERR, Codes.OBJECT_CHAR_INCORRECT, "");
-            } else if (objectExistAtAddressee(r)) {
-                s = createTaskResponse(s, Results.WARNING, Codes.EXISTING_OBJECT_AT_ADDRESSEE, "");
+            } else if (alreadyAssignedObjectToSubordinate(r)) {
+                s = createTaskResponse(s, Results.WARNING, Codes.EXISTING_OBJECT_AT_SUBORDINATE, "");
             } else if (!isMessageValid(r)) {
                 s = createTaskResponse(s, Results.ERR, Codes.MESSAGE_CHAR_INCORRECT, "");
             } else if (!isTermValid(r)) {
                 s = createTaskResponse(s, Results.ERR, Codes.TERM_IS_NOT_VALID, "");
             } else if (!isGracePeriodValid(r)) {
                 s = createTaskResponse(s, Results.ERR, Codes.GRACE_PERIOD_INCORRECT, "");
-            } else if (!isAddresseeEmailValid(r)) {
+            } else if (!isSubordinateIdExisting(r)) {
+                s = createTaskResponse(s, Results.ERR, Codes.NOT_EXIST_SUBORDINATE_ID, "");
+            } else if (!isSubordinateIdFormatValid(r)) {
                 s = createTaskResponse(s, Results.ERR, Codes.VALIDATION_ERR, "");
             } else {
                 s = createTaskResponse(s, Results.OK, Codes.SUCCESS, "");
@@ -130,7 +171,7 @@ public class TaskController {
     protected boolean isRequestValid(TaskRequest  r)
     {
         return r.getObject() != null && r.getMessage() != null && r.getTerm() != null
-                && r.getGracePeriod() != 0 && r.getAddresseeEmail() != null;
+                && r.getGracePeriod() != 0 && r.getSubordinateId() != null;
     }
 
     protected boolean isObjectValid(TaskRequest  r)
@@ -138,19 +179,26 @@ public class TaskController {
         return r.getObject().length() < Cfg.getObjectMaxCharLength() && r.getObject().length() > Cfg.getObjectMinCharLength();
     }
 
-    protected boolean objectExistAtAddressee(TaskRequest r)
-    {
-        List<TaskBase> tasksList;
+    protected boolean alreadyAssignedObjectToSubordinate(TaskRequest r) { return (findTaskOfSubordinateIdByObject(r.getEmailAddress(), r.getObject(), r.getSubordinateId()).size() >= 1);}
 
-        tasksList = taskRepo.findByObject(r.getObject());
-        if (tasksList.size() >= 1) {
-            for (int i = 0; i < tasksList.size(); i++) {
-                if (tasksList.get(i).getAddresseeMail().equals(r.getAddresseeEmail())) {
-                    return true;
+    protected List<TaskBase> findTaskOfSubordinateIdByObject(String u, String object, String id) {
+        List<String>   s;
+        TaskBase       t;
+        List<TaskBase> l;
+
+        s = findUserAccountsBase(u).getTaskIds();
+        l = new ArrayList<>();
+
+        for (int i = 0; i < s.size(); i++) {
+            t = taskRepo.findByIdAndObject(s.get(i), object);
+            if(t != null) {
+                if (t.getSubordinate_ids().contains(id)) {
+                    l.add(t);
                 }
             }
         }
-        return false;
+
+        return l;
     }
 
     protected boolean isMessageValid(TaskRequest r)
@@ -189,14 +237,22 @@ public class TaskController {
         return r.getGracePeriod() * h < d;
     }
 
-    protected boolean isAddresseeEmailValid(TaskRequest  r)
+    protected boolean isSubordinateIdFormatValid(TaskRequest r)
     {
-        return !(r.getAddresseeEmail().equals("validationErr"));
+        int i;
+        try {
+            i = Integer.parseInt(r.getSubordinateId());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    protected boolean isUserValid (TaskResponse s) { return s.getCode()==0;}
+    protected boolean isSubordinateIdExisting(TaskRequest  r) { return subordinateRepo.findById(r.getSubordinateId()) != null;}
 
-    protected UserAccountsBase getUserAccountsBase(String s) { return userAccountsRepo.findByEmailAddress(s).get(0);}
+    protected boolean isRequestSuccess(TaskResponse s) { return s.getCode()==0;}
+
+    protected UserAccountsBase findUserAccountsBase(String s) { return userAccountsRepo.findByEmailAddress(s).get(0);}
 
     protected TaskBase getTask(TaskRequest r) { return createTask(r);}
     protected TaskBase createTask(TaskRequest r)
@@ -209,7 +265,7 @@ public class TaskController {
         t.setMessage(r.getMessage());
         t.setTerm(r.getTerm());
         t.setGracePeriod(r.getGracePeriod());
-        t.setAddresseeMail(r.getAddresseeEmail());
+        t.addSubordinate_id(r.getSubordinateId());
 
         return t;
     }
@@ -220,7 +276,7 @@ public class TaskController {
         UserAccountsBase a;
 
         t = getTask(r);
-        a = getUserAccountsBase(r.getEmailAddress());
+        a = findUserAccountsBase(r.getEmailAddress());
 
         taskRepo.save(t);
         a.addTaskId(t.getId());
