@@ -13,15 +13,17 @@ public class TaskBase extends DateTimeEntity {
     public String       getMessage        () { return message        ;}
     public String       getTerm           () { return term           ;}
     public int          getGracePeriod    () { return gracePeriod    ;}
+    public int          getDone           () { return done           ;}
     public List<String> getSubordinate_ids() { return subordinate_ids;}
     public List<String> getSendingEmailIds() { return sendingEmailIds;}
 
-    public void setObject        (String       object          ) { this.object         = object          ;}
-    public void setMessage       (String       message         ) { this.message        = message         ;}
-    public void setTerm          (String       term            ) { this.term           = term            ;}
-    public void setGracePeriod   (int          gracePeriod     ) { this.gracePeriod    = gracePeriod     ;}
+    public void setObject         (String       object          ) { this.object          = object        ;}
+    public void setMessage        (String       message         ) { this.message         = message       ;}
+    public void setTerm           (String       term            ) { this.term            = term          ;}
+    public void setGracePeriod    (int          gracePeriod     ) { this.gracePeriod     = gracePeriod   ;}
+    public void setDone           (int          done            ) { this.done            = done          ;}
     public void setSubordinate_ids(List<String> subordinate_ids) { this.subordinate_ids = subordinate_ids;}
-    public void setSendingEmailIds(List<String> sendingEmailIds) { this.sendingEmailIds = sendingEmailIds; }
+    public void setSendingEmailIds(List<String> sendingEmailIds) { this.sendingEmailIds = sendingEmailIds;}
 
     public void addSubordinate_id(String id) { subordinate_ids.add(id);}
     public void addSendingEmailId(String id) { sendingEmailIds.add(id);}
@@ -34,6 +36,10 @@ public class TaskBase extends DateTimeEntity {
     protected String term           ;
     @Column(name = "grace_period")
     protected int    gracePeriod    ;
+    @Column(name = "done")
+    protected int    done           ;
+    @Transient
+    protected int    subordinateDone;
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
             name = "subordinate_x_task_mapping",
@@ -53,6 +59,7 @@ public class TaskBase extends DateTimeEntity {
     public TaskBase() {
         id              = String.valueOf(System.currentTimeMillis());
         dateTime        = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+        done            = 1;
         subordinate_ids = new ArrayList<>();
         sendingEmailIds = new ArrayList<>();
     }

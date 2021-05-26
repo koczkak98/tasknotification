@@ -1,6 +1,7 @@
 package com.tasknotification.tasknotification.controller.task;
 
 import com.tasknotification.tasknotification.controller.*;
+import com.tasknotification.tasknotification.controller.sendemail.SendEmailBc;
 import com.tasknotification.tasknotification.db.*;
 import com.tasknotification.tasknotification.model.base.TaskBase;
 import com.tasknotification.tasknotification.model.base.UserAccountsBase;
@@ -8,6 +9,7 @@ import com.tasknotification.tasknotification.model.sendemail.SendEmailRequest;
 import com.tasknotification.tasknotification.model.sendemail.SendEmailResponse;
 import com.tasknotification.tasknotification.model.task.*;
 import org.springframework.beans.factory.annotation.*;
+import org.springframework.scheduling.annotation.*;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.*;
@@ -19,12 +21,13 @@ public class TaskController {
     @Autowired
     protected UserAccountsDao userAccountsRepo;
     @Autowired
-    protected TaskDao         taskRepo        ;
+    protected TaskDao          taskRepo        ;
     @Autowired
-    protected SubordinateDao  subordinateRepo ;
+    protected SubordinateDao   subordinateRepo ;
+    protected UserAccountsBase user            ;
 
     @GetMapping("/addtask")
-    public SendEmailResponse sendTask(@RequestParam("object"         ) String object         ,
+    public TaskResponse sendTask(@RequestParam("object"         ) String object         ,
                                       @RequestParam("message"        ) String message        ,
                                       @RequestParam("term"           ) String term           ,
                                       @RequestParam("graceperiod"    ) int    gracePeriod    ,
@@ -34,56 +37,41 @@ public class TaskController {
     {
         HttpSession        i;
         TaskRequest        r;
-        SendEmailRequest  e1;
-        SendEmailResponse e2;
+        TaskResponse       s;
 
-        i = request.getSession(false);
-        r = getTaskRequest(i, sessionId, object, message, term, gracePeriod, id);
+        i    = request.getSession(false);
+        r    = getTaskRequest(i, sessionId, object, message, term, gracePeriod, id);
+        user = findUserAccountsBase(i.getAttribute("user").toString());
+        s    = getTaskResponse(r, i);
 
-        if (isTaskSavingSuccess(i, r)) {
-            System.out.println("DONE");
-        }
-
-        return new SendEmailResponse();
-    }
-
-    protected SendEmailRequest getSendEmailRequest(TaskRequest tr, String sender, String addressee) { return createSendEmailRequest(tr, sender, addressee);}
-    protected SendEmailRequest createSendEmailRequest(TaskRequest tr, String sender, String addressee)
-    {
-        SendEmailRequest r;
-
-        r = new SendEmailRequest();
-
-        r.setEmailAddress(tr.getEmailAddress());
-        r.setSender(sender);
-        r.setAddressee(addressee);
-        r.setLetters(findTaskOfSubordinateIdByObject(tr.getEmailAddress(), tr.getObject(), tr.getSubordinateId()));
-
-        return r;
-    }
-
-    protected void checkSendEmail(SendEmailRequest r) {
-
-    }
-
-    /** Task saving db */
-
-    protected boolean isTaskSavingSuccess(HttpSession  i, TaskRequest  r)
-    {
-        TaskResponse s;
-
-        s = getTaskResponse(r, i);
         try {
             if (isRequestSuccess(s)) {
                 saveTask(r);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
 
-        System.out.println("Response: " + s.getCode());
-        return s.getResult().equals(Results.OK.toString());
+        return s;
     }
+
+    @GetMapping("/feedback")
+    public String feedbackOfSubordinateForTask(@RequestParam("subordinateid") String subordinateId,
+                                               @RequestParam("taskid"       ) String taskId       ,
+                                               @RequestParam("feedback"     ) String done)
+    {
+        return "";
+    }
+
+    @GetMapping("/confirmation")
+    public String confirmationOfUserForTask(@RequestParam("userid"       ) String userId,
+                                            @RequestParam("taskid"       ) String taskId,
+                                            @RequestParam("subordinateid") String subordinateId)
+    {
+        return "";
+    }
+
+    /** Saving task */
 
     protected TaskRequest getTaskRequest(HttpSession session, String JSessionId, String object, String message, String term,
                                             int graceTimePeriod, String subordinateId)
@@ -186,7 +174,7 @@ public class TaskController {
         TaskBase       t;
         List<TaskBase> l;
 
-        s = findUserAccountsBase(u).getTaskIds();
+        s = user.getTaskIds();
         l = new ArrayList<>();
 
         for (int i = 0; i < s.size(); i++) {
@@ -219,7 +207,7 @@ public class TaskController {
         long d;
 
         d = 1000 * 60 * 60 * 24;
-        return getTermInDate(r.getTerm()).getTime() > new Date().getTime() + d;
+        return getTermInDate(r.getTerm()).getTime() > System.currentTimeMillis() + d;
     }
 
     protected boolean isGracePeriodValid(TaskRequest  r)
@@ -272,14 +260,12 @@ public class TaskController {
 
     protected void saveTask(TaskRequest r)
     {
-        TaskBase         t;
-        UserAccountsBase a;
+        TaskBase t;
 
         t = getTask(r);
-        a = findUserAccountsBase(r.getEmailAddress());
 
         taskRepo.save(t);
-        a.addTaskId(t.getId());
-        userAccountsRepo.save(a);
+        user.addTaskId(t.getId());
+        userAccountsRepo.save(user);
     }
 }
